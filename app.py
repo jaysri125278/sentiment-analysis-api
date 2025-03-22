@@ -16,7 +16,7 @@ app.config['JWT_SECRET_KEY'] = '9b1f4b0b2c4df0d3be57e0b3f62e79b33b4c7a2b6e46e0b3
 jwt = JWTManager(app)
 
 # MongoDB connection
-client = MongoClient('mongodb://localhost:27017/')
+client = MongoClient('mongodb+srv://saravananjaysri:0vj2JgUyBB9utubl@cluster0.lf4cc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
 db = client['sentimentDashboard']
 users_collection = db['Users']
 reviews_collection = db['Reviews']  # Create a Reviews collection
