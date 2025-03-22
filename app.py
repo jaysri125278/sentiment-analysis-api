@@ -11,21 +11,19 @@ app = Flask(__name__)
 
 CORS(app)
 
-# Secret key for JWT
 app.config['JWT_SECRET_KEY'] = '9b1f4b0b2c4df0d3be57e0b3f62e79b33b4c7a2b6e46e0b3b0136e9fe6b4e597'
 jwt = JWTManager(app)
 
-# MongoDB connection
 client = MongoClient('mongodb+srv://saravananjaysri:0vj2JgUyBB9utubl@cluster0.lf4cc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
 db = client['sentimentDashboard']
 users_collection = db['Users']
-reviews_collection = db['Reviews']  # Create a Reviews collection
+reviews_collection = db['Reviews']  
 
 sentiment_model = pipeline(
     "sentiment-analysis", 
     model="finiteautomata/bertweet-base-sentiment-analysis",
 )
-# Register Route
+
 @app.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -43,7 +41,6 @@ def register():
 
     return jsonify({'message': 'User inserted successfully'}), 200
 
-# Login Route
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -61,23 +58,20 @@ def login():
     return jsonify({'access_token': access_token}), 200
 
 @app.route('/submit_review', methods=['POST'])
-@jwt_required()  # Only authenticated users can submit a review
+@jwt_required()  
 def submit_review():
-    current_user = get_jwt_identity()  # Get the current user's username from the JWT token
+    current_user = get_jwt_identity()  
     
-    # Get the review data from the request
     data = request.get_json()
     review_text = data.get('review_text')
     
     if not review_text:
         return jsonify({'message': 'Review text is required'}), 400
 
-    # Perform sentiment analysis using Hugging Face model
-    sentiment_result = sentiment_model(review_text)[0]  # Get sentiment prediction
-    sentiment = sentiment_result['label']  # Sentiment label (e.g., "POSITIVE" or "NEGATIVE")
-    confidence = sentiment_result['score']  # Confidence score
+    sentiment_result = sentiment_model(review_text)[0]  
+    sentiment = sentiment_result['label']  
+    confidence = sentiment_result['score'] 
 
-    # Prepare review document to be inserted into the Reviews collection
     review = {
         'user_id': current_user,
         'review_text': review_text,
@@ -86,21 +80,17 @@ def submit_review():
         'created_at': datetime.utcnow() - timedelta(days=1)
     }
 
-    # Insert the review into the database
     reviews_collection.insert_one(review)
 
-    # Return sentiment label and confidence to the user
     return jsonify({
         'message': 'Review submitted successfully',
         'sentiment': sentiment,
         'confidence': confidence
     }), 200
 
-# Route to get all reviews (for displaying)
 @app.route('/reviews', methods=['GET'])
-@jwt_required()  # Only authenticated users can view reviews
+@jwt_required()  
 def get_reviews():
-    # Get all reviews from the 'Reviews' collection
     reviews = reviews_collection.find()
     reviews_list = []
     for review in reviews:
@@ -113,10 +103,8 @@ def get_reviews():
     return jsonify({'reviews': reviews_list}), 200
 
 
-# Endpoint to fetch sentiment distribution over time
 @app.route('/dashboard/sentiment_distribution', methods=['GET'])
 def sentiment_distribution():
-    # Group reviews by date and sentiment
     pipeline = [
         {
             '$group': {
@@ -134,7 +122,6 @@ def sentiment_distribution():
     
     result = list(reviews_collection.aggregate(pipeline))
     
-    # Format result for easier use in the frontend
     sentiment_data = {}
     for entry in result:
         date = entry['_id']['date']
@@ -148,12 +135,10 @@ def sentiment_distribution():
     
     return jsonify(sentiment_data), 200
 
-# Endpoint to fetch recent reviews
 @app.route('/dashboard/recent_reviews', methods=['GET'])
 def recent_reviews():
     reviews = list(reviews_collection.find().sort('created_at', -1).limit(5))
     
-    # Format recent reviews data
     recent_reviews = [{
         'user_id': review['user_id'],
         'review_text': review['review_text'],
@@ -164,7 +149,6 @@ def recent_reviews():
     
     return jsonify(recent_reviews), 200
 
-# Endpoint to filter reviews by date range
 @app.route('/dashboard/reviews_by_date', methods=['POST'])
 def reviews_by_date():
     data = request.get_json()
@@ -187,4 +171,4 @@ def reviews_by_date():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
